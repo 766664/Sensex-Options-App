@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Sensex Options Alert APK
 
 on:
   workflow_dispatch:
@@ -13,151 +13,61 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      # 1. Checkout
+
+      # 1. Download project
       - name: Checkout source
         uses: actions/checkout@v4
 
       # 2. Check ZIP
       - name: Check project ZIP
         run: |
+          set -e
           test -f SensexOptionsAlertPro_AndroidProject.zip
-          unzip -l SensexOptionsAlertPro_AndroidProject.zip | head -40
+          echo "Project ZIP found."
 
-      # 3. Extract project
+      # 3. Extract Android project
       - name: Extract Android project
         run: |
+          set -e
+
           rm -rf SensexOptionsAlertPro
+
           unzip -o SensexOptionsAlertPro_AndroidProject.zip
 
           test -f SensexOptionsAlertPro/build.gradle
           test -f SensexOptionsAlertPro/app/build.gradle
           test -f SensexOptionsAlertPro/app/src/main/AndroidManifest.xml
 
-      # 4. Check Sensex logo
-      - name: Check Sensex logo
-        run: |
-          test -f SensexOptionsAlertPro/app/src/main/res/drawable/sensex_logo.png
-          echo "Sensex logo found:"
-          ls -lh SensexOptionsAlertPro/app/src/main/res/drawable/sensex_logo.png
+          echo "Android project verified."
 
-      # 5. Set up Java
+      # 4. Java 17
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # 6. Set up Gradle
+      # 5. Gradle
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
-      # 7. Android SDK
+      # 6. Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
-      # 8. Verify SDK
-      - name: Verify Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --version
-          sdkmanager --list_installed
-
-      # 9. Create launcher icon resources
-      - name: Create Sensex launcher icon
+      # 7. Create Sensex icon
+      - name: Create Sensex App Icon
         working-directory: SensexOptionsAlertPro
+        shell: bash
         run: |
-          mkdir -p app/src/main/res/mipmap-anydpi-v26
+          set -e
+
           mkdir -p app/src/main/res/drawable
-
-          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-              <background android:drawable="@color/sensex_icon_background" />
-              <foreground android:drawable="@drawable/sensex_logo" />
-          </adaptive-icon>
-          EOF
-
-          mkdir -p app/src/main/res/values
-
-          if [ -f app/src/main/res/values/colors.xml ]; then
-            if ! grep -q 'sensex_icon_background' app/src/main/res/values/colors.xml; then
-              sed -i '/<\/resources>/i\    <color name="sensex_icon_background">#071A33</color>' app/src/main/res/values/colors.xml
-            fi
-          else
-            cat > app/src/main/res/values/colors.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="sensex_icon_background">#071A33</color>
-          </resources>
-          EOF
-          fi
-
-      # 10. Set App Icon in Manifest
-      - name: Set Sensex App Icon
-        working-directory: SensexOptionsAlertPro
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("app/src/main/AndroidManifest.xml")
-          text = p.read_text()
-
-          text = text.replace(
-              'android:icon="@mipmap/ic_launcher"',
-              'android:icon="@mipmap/ic_launcher"'
-          )
-
-          if "<application" not in text:
-              raise SystemExit("application tag not found")
-
-          if 'android:icon=' not in text:
-              text = text.replace(
-                  "<application",
-                  '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
-                  1
-              )
-
-          p.write_text(text)
-          PY
-
-          grep -n "application" app/src/main/AndroidManifest.xml
-
-      # 11. Verify project
-      - name: Verify Android project
-        working-directory: SensexOptionsAlertPro
-        run: |
-          echo "===== settings.gradle ====="
-          cat settings.gradle
-
-          echo "===== root build.gradle ====="
-          cat build.gradle
-
-          echo "===== app build.gradle ====="
-          cat app/build.gradle
-
-          echo "===== AndroidManifest.xml ====="
-          cat app/src/main/AndroidManifest.xml
-
-      # 12. Build APK
-      - name: Build Debug APK
-        working-directory: SensexOptionsAlertPro
-        run: |
-          gradle clean assembleDebug --no-daemon --stacktrace
-
-      # 13. Check APK
-      - name: Check generated APK
-        run: |
-          ls -lah SensexOptionsAlertPro/app/build/outputs/apk/debug/
-          test -f SensexOptionsAlertPro/app/build/outputs/apk/debug/app-debug.apk
-
-      # 14. Upload APK
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SensexOptionsAlertPro-APK
-          path: SensexOptionsAlertPro/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          mkdir -
